@@ -1,18 +1,16 @@
---// ULTRA BLACK OPTIMIZER V3
---// BLACK SCREEN + KEEP UI VISIBLE
-
-if getgenv().UltraBlackOptimizerLoaded then
+if getgenv().UltraOptimizerLoaded then
     return
 end
-getgenv().UltraBlackOptimizerLoaded = true
+getgenv().UltraOptimizerLoaded = true
 
 --// SERVICES
-local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
-local RunService = game:GetService("RunService")
 local Terrain = workspace:FindFirstChildOfClass("Terrain")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 local ContentProvider = game:GetService("ContentProvider")
-local CoreGui = game:GetService("CoreGui")
+local UserSettings = UserSettings()
+local settings = UserSettings:GetService("UserGameSettings")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -20,31 +18,27 @@ local LocalPlayer = Players.LocalPlayer
 -- SETTINGS
 --==================================================
 
-getgenv().UltraOptimizerSettings = {
-
-    FPSCap = 3,
-
-    BlackScreen = true,
-    Disable3DRendering = true,
-
+getgenv().OptimizerSettings = {
     RemoveTextures = true,
-    RemoveMeshes = true,
-    RemoveParticles = true,
-    RemoveExplosions = true,
-    RemoveSounds = true,
-    RemoveAnimations = true,
-    RemoveGUIEffects = true,
-
-    HidePlayers = true,
-
-    ForceLowQuality = true,
+    RemoveMeshes = false,
+    DestroyEffects = true,
+    DestroyExplosions = true,
+    DisableParticles = true,
+    LowQualityParts = true,
+    DisableShadows = true,
+    DisableLighting = true,
+    LowRendering = true,
+    Disable3DRendering = true, -- TRUE = BLACK SCREEN HUGE FPS BOOST
+    FPSCap = 5,
+    StreamerMode = true,
     RemoveWater = true,
-
-    MemoryCleaner = true,
-    AggressiveCleaner = true
+    DisableAnimations = true,
+    HideOtherPlayers = false,
+    AutoCleanMemory = true,
+    AggressiveMemoryClean = true
 }
 
-local CFG = getgenv().UltraOptimizerSettings
+local CFG = getgenv().OptimizerSettings
 
 --==================================================
 -- FPS CAP
@@ -57,117 +51,53 @@ pcall(function()
 end)
 
 --==================================================
--- LOWEST GRAPHICS
+-- GRAPHICS QUALITY
 --==================================================
 
 pcall(function()
-    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-end)
-
-pcall(function()
-    UserSettings():GetService("UserGameSettings").SavedQualityLevel =
-        Enum.SavedQualitySetting.QualityLevel1
+    settings.SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1
 end)
 
 --==================================================
--- BLACK SCREEN (UI SAFE)
+-- LIGHTING OPTIMIZATION
 --==================================================
 
-if CFG.BlackScreen then
-
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "BLACK_SCREEN_OPTIMIZER"
-    gui.IgnoreGuiInset = true
-    gui.ResetOnSpawn = false
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    gui.DisplayOrder = -999999
-
-    pcall(function()
-        gui.Parent = CoreGui
-    end)
-
-    local frame = Instance.new("Frame")
-    frame.Name = "BlackFrame"
-    frame.Size = UDim2.new(1,0,1,0)
-    frame.BackgroundColor3 = Color3.new(0,0,0)
-    frame.BorderSizePixel = 0
-    frame.ZIndex = -999999
-    frame.Parent = gui
-
-    -- KEEP OTHER UIS ABOVE BLACK SCREEN
-    task.spawn(function()
-
-        while task.wait(2) do
-
-            pcall(function()
-
-                for _,v in ipairs(CoreGui:GetChildren()) do
-
-                    if v:IsA("ScreenGui")
-                    and v ~= gui then
-
-                        if v.DisplayOrder < 1000 then
-                            v.DisplayOrder = 1000
-                        end
-
-                    end
-
-                end
-
-            end)
-
-        end
-
-    end)
-
-end
-
---==================================================
--- DISABLE 3D RENDERING
---==================================================
-
-if CFG.Disable3DRendering then
-    pcall(function()
-        RunService:Set3dRenderingEnabled(false)
-    end)
-end
-
---==================================================
--- LIGHTING DESTROYER
---==================================================
-
-pcall(function()
+local function optimizeLighting()
 
     Lighting.GlobalShadows = false
     Lighting.FogEnd = 9e9
     Lighting.Brightness = 0
-    Lighting.ClockTime = 12
-    Lighting.ExposureCompensation = -10
+    Lighting.ClockTime = 14
+    Lighting.ExposureCompensation = 0
+
     Lighting.EnvironmentDiffuseScale = 0
     Lighting.EnvironmentSpecularScale = 0
-
-    Lighting.Ambient = Color3.new(0,0,0)
-    Lighting.OutdoorAmbient = Color3.new(0,0,0)
 
     pcall(function()
         Lighting.Technology = Enum.Technology.Compatibility
     end)
 
     for _,v in ipairs(Lighting:GetChildren()) do
-        pcall(function()
+        if v:IsA("PostEffect")
+        or v:IsA("Atmosphere")
+        or v:IsA("Sky")
+        or v:IsA("Clouds") then
             v:Destroy()
-        end)
+        end
     end
+end
 
-end)
+if CFG.DisableLighting then
+    optimizeLighting()
+end
 
 --==================================================
--- WATER REMOVAL
+-- TERRAIN OPTIMIZATION
 --==================================================
 
 pcall(function()
 
-    if Terrain and CFG.RemoveWater then
+    if Terrain then
         Terrain.WaterWaveSize = 0
         Terrain.WaterWaveSpeed = 0
         Terrain.WaterReflectance = 0
@@ -177,164 +107,116 @@ pcall(function()
 end)
 
 --==================================================
--- OPTIMIZE OBJECTS
+-- EFFECT REMOVAL
 --==================================================
 
-local function optimize(v)
+local function optimizeObject(v)
 
-    pcall(function()
-
-        -- TEXTURES
-        if CFG.RemoveTextures then
-            if v:IsA("Texture")
-            or v:IsA("Decal") then
-                v:Destroy()
-            end
-        end
-
-        -- PARTICLES
-        if CFG.RemoveParticles then
-            if v:IsA("ParticleEmitter")
-            or v:IsA("Trail")
-            or v:IsA("Smoke")
-            or v:IsA("Fire")
-            or v:IsA("Sparkles")
-            or v:IsA("Beam") then
-                v:Destroy()
-            end
-        end
-
-        -- EXPLOSIONS
-        if CFG.RemoveExplosions then
-            if v:IsA("Explosion") then
-                v:Destroy()
-            end
-        end
-
-        -- MESHES
-        if CFG.RemoveMeshes then
-
-            if v:IsA("SpecialMesh") then
-                v.TextureId = ""
-            end
-
-            if v:IsA("MeshPart") then
-                v.TextureID = ""
-                v.Material = Enum.Material.Plastic
-            end
-        end
-
-        -- LIGHTS
-        if v:IsA("PointLight")
-        or v:IsA("SpotLight")
-        or v:IsA("SurfaceLight") then
+    -- EFFECTS
+    if CFG.DisableParticles then
+        if v:IsA("ParticleEmitter")
+        or v:IsA("Trail")
+        or v:IsA("Smoke")
+        or v:IsA("Fire")
+        or v:IsA("Sparkles")
+        or v:IsA("Beam") then
             v.Enabled = false
         end
+    end
 
-        -- SOUNDS
-        if CFG.RemoveSounds then
+    -- EXPLOSIONS
+    if CFG.DestroyExplosions and v:IsA("Explosion") then
+        v:Destroy()
+    end
 
-            if v:IsA("Sound") then
-                v.Volume = 0
-
-                if not v.IsPlaying then
-                    v:Destroy()
-                end
-            end
+    -- TEXTURES
+    if CFG.RemoveTextures then
+        if v:IsA("Texture")
+        or v:IsA("Decal") then
+            v.Transparency = 1
         end
+    end
 
-        -- LOW QUALITY PARTS
-        if CFG.ForceLowQuality and v:IsA("BasePart") then
+    -- MESHES
+    if CFG.RemoveMeshes then
+        if v:IsA("SpecialMesh") then
+            v.TextureId = ""
+        end
+    end
+
+    -- PART QUALITY
+    if CFG.LowQualityParts then
+        if v:IsA("BasePart") then
             v.Material = Enum.Material.Plastic
             v.Reflectance = 0
             v.CastShadow = false
         end
+    end
 
-        -- GUI EFFECTS
-        if CFG.RemoveGUIEffects then
+    -- LIGHTS
+    if v:IsA("PointLight")
+    or v:IsA("SpotLight")
+    or v:IsA("SurfaceLight") then
+        v.Enabled = false
+    end
 
-            if v:IsA("BlurEffect")
-            or v:IsA("SunRaysEffect")
-            or v:IsA("BloomEffect")
-            or v:IsA("ColorCorrectionEffect")
-            or v:IsA("DepthOfFieldEffect") then
-                v:Destroy()
-            end
-        end
+    -- UI BLURS
+    if v:IsA("BlurEffect") then
+        v.Enabled = false
+    end
+end
 
+-- APPLY TO EXISTING
+for _,v in ipairs(game:GetDescendants()) do
+    task.spawn(function()
+        pcall(function()
+            optimizeObject(v)
+        end)
     end)
 end
 
---==================================================
--- APPLY TO ALL OBJECTS
---==================================================
-
-for _,v in ipairs(game:GetDescendants()) do
-    task.spawn(optimize, v)
-end
-
-game.DescendantAdded:Connect(optimize)
+-- APPLY TO NEW OBJECTS
+game.DescendantAdded:Connect(function(v)
+    pcall(function()
+        optimizeObject(v)
+    end)
+end)
 
 --==================================================
 -- HIDE OTHER PLAYERS
 --==================================================
 
-if CFG.HidePlayers then
-
+if CFG.HideOtherPlayers then
     local function hideCharacter(char)
-
         for _,v in ipairs(char:GetDescendants()) do
-
-            pcall(function()
-
-                if v:IsA("BasePart") then
-                    v.Transparency = 1
-                    v.LocalTransparencyModifier = 1
-                end
-
-                if v:IsA("Decal") then
-                    v.Transparency = 1
-                end
-
-            end)
-
+            if v:IsA("BasePart") then
+                v.Transparency = 1
+            end
         end
     end
 
     for _,plr in ipairs(Players:GetPlayers()) do
-
         if plr ~= LocalPlayer then
-
             if plr.Character then
                 hideCharacter(plr.Character)
             end
 
             plr.CharacterAdded:Connect(hideCharacter)
-
         end
     end
 end
 
 --==================================================
--- REMOVE ANIMATIONS
+-- DISABLE ANIMATIONS
 --==================================================
 
-if CFG.RemoveAnimations then
-
+if CFG.DisableAnimations then
     local function disableAnimations(char)
-
         for _,v in ipairs(char:GetDescendants()) do
-
-            pcall(function()
-
-                if v:IsA("Animator")
-                or v:IsA("AnimationController")
-                or v:IsA("Animate") then
-                    v:Destroy()
-                end
-
-            end)
-
+            if v:IsA("Animator")
+            or v:IsA("AnimationController") then
+                v:Destroy()
+            end
         end
     end
 
@@ -343,87 +225,91 @@ if CFG.RemoveAnimations then
     end
 
     LocalPlayer.CharacterAdded:Connect(disableAnimations)
-
 end
 
 --==================================================
 -- MEMORY CLEANER
 --==================================================
 
-if CFG.MemoryCleaner then
-
+if CFG.AutoCleanMemory then
     task.spawn(function()
-
         while true do
-            task.wait(10)
+            task.wait(15)
 
             pcall(function()
 
+                -- LUA GC
                 collectgarbage("collect")
+
+                -- CONTENT FLUSH
+                ContentProvider:PreloadAsync({})
+
+                -- REMOVE UNUSED SOUNDS
+                for _,v in ipairs(workspace:GetDescendants()) do
+                    if v:IsA("Sound") then
+                        if not v.IsPlaying then
+                            v:Destroy()
+                        end
+                    end
+                end
+
+            end)
+        end
+    end)
+end
+
+--==================================================
+-- AGGRESSIVE MEMORY MODE
+--==================================================
+
+if CFG.AggressiveMemoryClean then
+    task.spawn(function()
+        while true do
+            task.wait(30)
+
+            pcall(function()
 
                 for _,v in ipairs(workspace:GetDescendants()) do
 
-                    if v:IsA("Sound") and not v.IsPlaying then
-                        v:Destroy()
-                    end
-
+                    -- REMOVE FAR AWAY PARTICLES
                     if v:IsA("ParticleEmitter") then
                         v.Enabled = false
                     end
 
+                    -- REMOVE LARGE TEXTURES
+                    if v:IsA("Decal")
+                    or v:IsA("Texture") then
+                        v.Transparency = 1
+                    end
                 end
-
-            end)
-
-        end
-
-    end)
-
-end
-
---==================================================
--- AGGRESSIVE CLEANER
---==================================================
-
-if CFG.AggressiveCleaner then
-
-    task.spawn(function()
-
-        while true do
-            task.wait(20)
-
-            pcall(function()
 
                 collectgarbage("collect")
 
-                for _,v in ipairs(workspace:GetDescendants()) do
-
-                    if v:IsA("Texture")
-                    or v:IsA("Decal")
-                    or v:IsA("ParticleEmitter")
-                    or v:IsA("Trail") then
-                        v:Destroy()
-                    end
-
-                end
-
             end)
-
         end
-
     end)
-
 end
 
 --==================================================
--- CONSTANT ENFORCER
+-- BLACK SCREEN MODE
+--==================================================
+
+if CFG.Disable3DRendering then
+    RunService:Set3dRenderingEnabled(false)
+end
+
+--==================================================
+-- KEEP SETTINGS ENFORCED
 --==================================================
 
 RunService.RenderStepped:Connect(function()
 
     pcall(function()
 
-        Lighting.GlobalShadows = false
+        if CFG.DisableShadows then
+            Lighting.GlobalShadows = false
+        end
+
         Lighting.Brightness = 0
         Lighting.EnvironmentDiffuseScale = 0
         Lighting.EnvironmentSpecularScale = 0
@@ -433,20 +319,27 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --==================================================
+-- BOOST NETWORK / STREAMING
+--==================================================
+
+pcall(function()
+    settings.MasterVolume = 0
+end)
+
+--==================================================
 -- FINAL
 --==================================================
 
 warn([[
-=====================================
- ULTRA BLACK OPTIMIZER ENABLED
-=====================================
-BLACK SCREEN ACTIVE
-UI SAFE MODE ENABLED
-3D RENDERING DISABLED
-TEXTURES DESTROYED
-PARTICLES DESTROYED
-ANIMATIONS REMOVED
-MEMORY CLEANER ACTIVE
-MAXIMUM FPS BOOST ENABLED
-=====================================
+==================================
+ EXTREME OPTIMIZER ENABLED
+==================================
+Textures Removed
+Particles Disabled
+Shadows Disabled
+Lighting Reduced
+Memory Cleaner Active
+FPS Cap Applied
+Lag Reduction Enabled
+==================================
 ]])
