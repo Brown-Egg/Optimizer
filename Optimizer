@@ -1,5 +1,5 @@
---// BLACK SCREEN ULTRA OPTIMIZER V2
---// MAX FPS / MIN RAM / POTATO MODE
+--// ULTRA BLACK OPTIMIZER V3
+--// BLACK SCREEN + KEEP UI VISIBLE
 
 if getgenv().UltraBlackOptimizerLoaded then
     return
@@ -12,10 +12,9 @@ local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local Terrain = workspace:FindFirstChildOfClass("Terrain")
 local ContentProvider = game:GetService("ContentProvider")
-local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 
 --==================================================
 -- SETTINGS
@@ -23,7 +22,7 @@ local Camera = workspace.CurrentCamera
 
 getgenv().UltraOptimizerSettings = {
 
-    FPSCap = 5,
+    FPSCap = 3,
 
     BlackScreen = true,
     Disable3DRendering = true,
@@ -36,10 +35,7 @@ getgenv().UltraOptimizerSettings = {
     RemoveAnimations = true,
     RemoveGUIEffects = true,
 
-    DestroyToolsVisuals = true,
-
     HidePlayers = true,
-    HideMap = false,
 
     ForceLowQuality = true,
     RemoveWater = true,
@@ -74,7 +70,7 @@ pcall(function()
 end)
 
 --==================================================
--- BLACK SCREEN GUI
+-- BLACK SCREEN (UI SAFE)
 --==================================================
 
 if CFG.BlackScreen then
@@ -83,17 +79,46 @@ if CFG.BlackScreen then
     gui.Name = "BLACK_SCREEN_OPTIMIZER"
     gui.IgnoreGuiInset = true
     gui.ResetOnSpawn = false
-    gui.DisplayOrder = 999999
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.DisplayOrder = -999999
 
     pcall(function()
-        gui.Parent = game:GetService("CoreGui")
+        gui.Parent = CoreGui
     end)
 
     local frame = Instance.new("Frame")
+    frame.Name = "BlackFrame"
     frame.Size = UDim2.new(1,0,1,0)
     frame.BackgroundColor3 = Color3.new(0,0,0)
     frame.BorderSizePixel = 0
+    frame.ZIndex = -999999
     frame.Parent = gui
+
+    -- KEEP OTHER UIS ABOVE BLACK SCREEN
+    task.spawn(function()
+
+        while task.wait(2) do
+
+            pcall(function()
+
+                for _,v in ipairs(CoreGui:GetChildren()) do
+
+                    if v:IsA("ScreenGui")
+                    and v ~= gui then
+
+                        if v.DisplayOrder < 1000 then
+                            v.DisplayOrder = 1000
+                        end
+
+                    end
+
+                end
+
+            end)
+
+        end
+
+    end)
 
 end
 
@@ -167,7 +192,7 @@ local function optimize(v)
             end
         end
 
-        -- PARTICLES / EFFECTS
+        -- PARTICLES
         if CFG.RemoveParticles then
             if v:IsA("ParticleEmitter")
             or v:IsA("Trail")
@@ -188,14 +213,14 @@ local function optimize(v)
 
         -- MESHES
         if CFG.RemoveMeshes then
-            if v:IsA("SpecialMesh")
-            or v:IsA("MeshPart") then
-                if v:IsA("MeshPart") then
-                    v.TextureID = ""
-                    v.Material = Enum.Material.Plastic
-                else
-                    v.TextureId = ""
-                end
+
+            if v:IsA("SpecialMesh") then
+                v.TextureId = ""
+            end
+
+            if v:IsA("MeshPart") then
+                v.TextureID = ""
+                v.Material = Enum.Material.Plastic
             end
         end
 
@@ -208,15 +233,17 @@ local function optimize(v)
 
         -- SOUNDS
         if CFG.RemoveSounds then
+
             if v:IsA("Sound") then
                 v.Volume = 0
-                if not v.Playing then
+
+                if not v.IsPlaying then
                     v:Destroy()
                 end
             end
         end
 
-        -- PARTS
+        -- LOW QUALITY PARTS
         if CFG.ForceLowQuality and v:IsA("BasePart") then
             v.Material = Enum.Material.Plastic
             v.Reflectance = 0
@@ -225,10 +252,11 @@ local function optimize(v)
 
         -- GUI EFFECTS
         if CFG.RemoveGUIEffects then
+
             if v:IsA("BlurEffect")
             or v:IsA("SunRaysEffect")
-            or v:IsA("ColorCorrectionEffect")
             or v:IsA("BloomEffect")
+            or v:IsA("ColorCorrectionEffect")
             or v:IsA("DepthOfFieldEffect") then
                 v:Destroy()
             end
@@ -238,7 +266,7 @@ local function optimize(v)
 end
 
 --==================================================
--- APPLY TO EVERYTHING
+-- APPLY TO ALL OBJECTS
 --==================================================
 
 for _,v in ipairs(game:GetDescendants()) do
@@ -248,7 +276,7 @@ end
 game.DescendantAdded:Connect(optimize)
 
 --==================================================
--- HIDE PLAYERS
+-- HIDE OTHER PLAYERS
 --==================================================
 
 if CFG.HidePlayers then
@@ -368,8 +396,6 @@ if CFG.AggressiveCleaner then
 
                 collectgarbage("collect")
 
-                ContentProvider:PreloadAsync({})
-
                 for _,v in ipairs(workspace:GetDescendants()) do
 
                     if v:IsA("Texture")
@@ -415,6 +441,7 @@ warn([[
  ULTRA BLACK OPTIMIZER ENABLED
 =====================================
 BLACK SCREEN ACTIVE
+UI SAFE MODE ENABLED
 3D RENDERING DISABLED
 TEXTURES DESTROYED
 PARTICLES DESTROYED
